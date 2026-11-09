@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>사이클로이드 시뮬레이션</title>
+<style>
+:root{--bg:#fafaf7;--fg:#1d1d1b;--mut:#6b6b66;--card:#fff;--bd:#dcdcd4;--cy:#d9480f;--ln:#1971c2;--ac:#2f9e44;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);color-scheme:light}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#17171a;--fg:#ececea;--mut:#9a9a94;--card:#222226;--bd:#38383e;--cy:#ff8a4c;--ln:#74b0ff;--ac:#69db7c;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#17171a;--fg:#ececea;--mut:#9a9a94;--card:#222226;--bd:#38383e;--cy:#ff8a4c;--ln:#74b0ff;--ac:#69db7c;color-scheme:dark}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--fg);font-family:-apple-system,"Apple SD Gothic Neo","Noto Sans KR",sans-serif;line-height:1.5}
+.w{max-width:1100px;margin:0 auto;padding:10px 14px}
+h1{font-size:1.15rem;margin:0 0 2px}
+p.s{color:var(--mut);margin:0 0 8px;font-size:.85rem}
+.tabs{display:flex;gap:8px;margin-bottom:8px}
+.tabs button{flex:1;padding:7px;border:1px solid var(--bd);background:var(--card);color:var(--fg);border-radius:10px;font-size:1rem;cursor:pointer}
+.tabs button.on{background:var(--fg);color:var(--bg)}
+.card{background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:12px;display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:16px;align-items:stretch}
+canvas{display:block}.cvw{display:flex;justify-content:center;align-items:center;min-width:0}.side{min-width:0}
+.ctl{display:flex;flex-wrap:wrap;gap:12px 20px;align-items:center;margin-top:12px}
+.ctl label{display:flex;align-items:center;gap:8px;font-size:.9rem}
+.ctl input[type=range]{width:140px}
+.btn{padding:10px 18px;border:0;border-radius:10px;background:var(--ac);color:#111;font-size:1rem;font-weight:600;cursor:pointer}
+.btn.g{background:var(--bd);color:var(--fg)}
+.out{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px}
+.out div{border:1px solid var(--bd);border-radius:10px;padding:8px 10px;font-size:.9rem}
+.out b{display:block;font-size:1.3rem;font-variant-numeric:tabular-nums}
+.msg{margin-top:10px;font-weight:600;min-height:1.5em}
+.note{color:var(--mut);font-size:.85rem;margin-top:8px}
+.c1{color:var(--cy)}.c2{color:var(--ln)}
+@media (max-width:600px){.card{grid-template-columns:1fr}}
+.pk{flex-direction:column}.pk .opt{display:flex;align-items:center;gap:8px;border:1px solid var(--bd);border-radius:10px;padding:5px 8px}.pk .opt span{flex:1;font-size:.95rem}.pk .opt button{width:34px;height:34px;padding:0;font-size:1.2rem;line-height:1;border-radius:8px}.pk .opt b.n{display:inline-block;margin:0;min-width:1.6em;text-align:center;font-size:1.1rem;font-variant-numeric:tabular-nums}.pk .opt.on{border-color:var(--fg);background:rgba(127,127,127,.12)}.pick .hint{font-weight:400;color:var(--mut)}
+@media (max-height:480px){p.s{display:none}.pick{margin-top:0}.ctl{margin-top:8px}.out{margin-top:8px}.msg{margin-top:6px}.pk .opt{padding:3px 8px}.pk .opt button{width:30px;height:30px}}
+#rot{display:none;background:var(--card);border:1px solid var(--bd);border-radius:10px;padding:6px 10px;margin-bottom:8px;font-size:.85rem;color:var(--mut)}
+@media (orientation:portrait) and (max-width:900px){#rot{display:block}}
+.pick{margin-top:12px}.pick b{display:block;font-size:.9rem;margin-bottom:6px}.pk{display:flex;gap:8px;flex-wrap:wrap}.pk button{padding:8px 14px;border:1px solid var(--bd);background:var(--card);color:var(--fg);border-radius:10px;font-size:.95rem;cursor:pointer}.pk button.on{background:var(--fg);color:var(--bg)}.pk button:disabled{opacity:.55;cursor:default}.btn:disabled{opacity:.45;cursor:default}.tally{color:var(--mut);font-size:.85rem;margin-top:8px}.tally button{margin-left:8px;border:1px solid var(--bd);background:transparent;color:var(--mut);border-radius:8px;padding:2px 8px;cursor:pointer}
+</style>
+</head>
+<body>
+<div class="w">
+<h1>사이클로이드 시뮬레이션</h1>
+<p class="s">마찰·공기 저항이 없는 이상적인 조건에서 중력만으로 굴러가는 공을 계산합니다.</p>
+<div class="tabs"><button id="t1" class="on">① 곡선 vs 직선 경주</button><button id="t2">② 질량이 달라도 같다</button></div>
+
+<div id="rot">화면을 가로로 돌리면 더 크게 볼 수 있어요.</div>
+<div id="p1" class="card">
+<div class="cvw"><canvas id="cv1"></canvas></div><div class="side">
+<div class="pick"><b>출발하기 전에 예측해 보세요 <span class="hint">(여러 명이면 각자 눌러 주세요)</span></b><div class="pk" id="pk1"><div class="opt" data-v="c"><span>사이클로이드가 먼저</span><button class="m">−</button><b class="n">0</b><button class="p">+</button></div><div class="opt" data-v="l"><span>직선이 먼저</span><button class="m">−</button><b class="n">0</b><button class="p">+</button></div><div class="opt" data-v="s"><span>동시에 도착</span><button class="m">−</button><b class="n">0</b><button class="p">+</button></div></div></div>
+<div class="ctl">
+<button class="btn" id="go1">출발</button><button class="btn g" id="rs1">처음으로</button>
+
+
+</div>
+<div class="out"><div><span class="c1">● 사이클로이드</span><b id="a1">0.00 s</b></div><div><span class="c2">● 직선</span><b id="b1">0.00 s</b></div></div>
+<div class="msg" id="m1"></div>
+<div class="tally" id="ty1"></div></div>
+
+</div>
+
+<div id="p2" class="card" style="display:none">
+<div class="cvw"><canvas id="cv2"></canvas></div><div class="side">
+<div class="pick"><b>출발하기 전에 예측해 보세요 <span class="hint">(여러 명이면 각자 눌러 주세요)</span></b><div class="pk" id="pk2"><div class="opt" data-v="a"><span>무거운 공이 먼저</span><button class="m">−</button><b class="n">0</b><button class="p">+</button></div><div class="opt" data-v="b"><span>가벼운 공이 먼저</span><button class="m">−</button><b class="n">0</b><button class="p">+</button></div><div class="opt" data-v="s"><span>동시에 도착</span><button class="m">−</button><b class="n">0</b><button class="p">+</button></div></div></div>
+<div class="ctl">
+<button class="btn" id="go2">출발</button><button class="btn g" id="rs2">처음으로</button>
+
+
+
+</div>
+<div class="out">
+<div><span class="c1">● 무거운 공</span><b id="ta">0.00 s</b></div>
+<div><span class="c2">● 가벼운 공</span><b id="tb">0.00 s</b></div>
+</div>
+<div class="msg" id="m2"></div>
+<div class="tally" id="ty2"></div></div>
+
+</div>
+</div>
+
+<script>
+const g=9.8,R=1,$=id=>document.getElementById(id);
+const css=n=>getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+function setup(cv,W,H,pad){const box=cv.parentElement.clientWidth,dpr=window.devicePixelRatio||1;const maxH=Math.max(200,innerHeight-170);const sc=Math.min((box-2*pad)/W,(maxH-2*pad-16)/H,110);const cw=sc*W+2*pad,top=16,ch=sc*H+2*pad+top;cv.style.width=cw+"px";cv.style.height=ch+"px";cv.width=cw*dpr;cv.height=ch*dpr;const c=cv.getContext("2d");c.setTransform(dpr,0,0,dpr,0,0);c.clearRect(0,0,cw,ch);return{c,sc,pad,cw,ch,top}}
+let OX=0;const P=(S,x,y,oy=0)=>[S.pad+(x+OX)*S.sc,S.pad+S.top+(y+oy)*S.sc];
+const cx=th=>R*(th-Math.sin(th)),cy=th=>R*(1-Math.cos(th));
+function path(S,pts,col,w,dash,oy){const c=S.c;c.beginPath();pts.forEach((p,i)=>{const q=P(S,p[0],p[1],oy);i?c.lineTo(q[0],q[1]):c.moveTo(q[0],q[1])});c.strokeStyle=col;c.lineWidth=w;c.setLineDash(dash||[]);c.stroke();c.setLineDash([])}
+function ball(S,x,y,r,col,oy){const q=P(S,x,y,oy),c=S.c;c.beginPath();c.arc(q[0],q[1]-r,r,0,7);c.fillStyle=col;c.fill();c.strokeStyle=css("--fg");c.lineWidth=1.5;c.stroke()}
+function cyc(thE,n=120){const a=[];for(let i=0;i<=n;i++){const t=thE*i/n;a.push([cx(t),cy(t)])}return a}
+
+/* ---------- 예측 ---------- */
+const mem={},store={get(k){try{const x=localStorage.getItem(k);if(x)return JSON.parse(x)}catch(e){}return mem[k]||null},set(k,v){mem[k]=v;try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
+const pick={1:{},2:{}},lab={1:{c:"사이클로이드",l:"직선",s:"동시에"},2:{a:"무거운 공",b:"가벼운 공",s:"동시에"}};
+const tally=n=>store.get("cyc-tally-"+n)||{n:0,ok:0,v:{}};
+function showTally(n){const d=tally(n),L=lab[n];$("ty"+n).innerHTML=d.n?`누적 예측 ${d.n}명 (${Object.keys(L).map(k=>`${L[k]} ${d.v[k]||0}명`).join(" · ")}) <button id="tc${n}">기록 지우기</button>`:"아직 기록된 예측이 없습니다.";const b=$("tc"+n);if(b)b.onclick=()=>{store.set("cyc-tally-"+n,{n:0,ok:0,v:{}});showTally(n)}}
+const tot=n=>Object.values(pick[n]).reduce((a,b)=>a+b,0);
+function renderPick(n){document.querySelectorAll("#pk"+n+" .opt").forEach(o=>{const c=pick[n][o.dataset.v]||0;o.querySelector(".n").textContent=c;o.classList.toggle("on",c>0)});$("go"+n).disabled=!tot(n)}
+function addPick(n,v,d){pick[n][v]=Math.max(0,(pick[n][v]||0)+d);renderPick(n)}
+function setPick(n){pick[n]={};renderPick(n)}
+const lockPick=(n,on)=>document.querySelectorAll("#pk"+n+" button").forEach(b=>b.disabled=on);
+function begin(n){const d=tally(n);Object.keys(pick[n]).forEach(k=>{const c=pick[n][k]||0;d.n+=c;d.v[k]=(d.v[k]||0)+c});store.set("cyc-tally-"+n,d);lockPick(n,true);$("go"+n).disabled=true;showTally(n)}
+function finish(n,t){const d=tally(n);d.ok+=pick[n][t]||0;store.set("cyc-tally-"+n,d);showTally(n)}
+const res=(n,t)=>{const T=tot(n);return T?`예측한 ${T}명 중 ${pick[n][t]||0}명이 맞혔어요. `:""};
+const truth2=()=>Math.abs(s2.A.done-s2.B.done)<5e-4?"s":(s2.A.done<s2.B.done?"a":"b");
+
+/* ---------- Sim 1 ---------- */
+let s1={t:0,run:false,last:0};
+function d1(){
+ const thE=Math.PI,xe=cx(thE),ye=cy(thE),L=Math.hypot(xe,ye),a=g*ye/L;
+ const tc=thE*Math.sqrt(R/g),tl=Math.sqrt(2*L/a);
+ const S=setup($("cv1"),xe+0.4,2.2,18);
+ const th=Math.min(s1.t*Math.sqrt(g/R),thE),s=Math.min(.5*a*s1.t*s1.t,L);
+ path(S,cyc(thE),css("--cy"),3,null,0);path(S,[[0,0],[xe,ye]],css("--ln"),3,null,0);
+ const c=S.c,e=P(S,xe,ye);c.fillStyle=css("--fg");c.fillRect(e[0]-2,e[1]-26,4,26);
+ const r=Math.max(8,S.sc*.09);
+ ball(S,cx(th),cy(th),r,css("--cy"));ball(S,s*xe/L,s*ye/L,r,css("--ln"));
+ const ta=Math.min(s1.t,tc),tb=Math.min(s1.t,tl);
+ $("a1").textContent=ta.toFixed(2)+" s";$("b1").textContent=tb.toFixed(2)+" s";
+ $("m1").textContent=s1.t>=tl?res(1,"c")+`사이클로이드가 ${(tl-tc).toFixed(2)}초 먼저 도착! (약 ${Math.round((1-tc/tl)*100)}% 빠름 · 사이클로이드 도착 순간 직선 공은 전체 거리의 약 ${Math.round((1-(tc/tl)**2)*100)}%를 남겨두고 있었어요)`:"";
+ return s1.t<Math.max(tc,tl)+.3;
+}
+function f1(ts){if(!s1.run)return;const dt=Math.min((ts-s1.last)/1000,.05);s1.last=ts;s1.t+=dt*SP1;if(d1())requestAnimationFrame(f1);else{s1.run=false;finish(1,"c")}}
+$("go1").onclick=()=>{if(!tot(1)||s1.run||s1.t>0)return;begin(1);s1.run=true;s1.last=performance.now();requestAnimationFrame(f1)};
+$("rs1").onclick=()=>{s1.run=false;s1.t=0;setPick(1,null);lockPick(1,false);d1()};
+
+
+/* ---------- Sim 2 (mass enters the numerical integration) ---------- */
+const mk=()=>({s:0,v:0,done:null});
+const MA=10,MB=1,SP1=0.4,SP2=0.5; // 무거운 공 10 kg, 가벼운 공 1 kg, 재생 속도 0.5배
+let s2={t:0,run:false,last:0,A:mk(),B:mk()};
+function step(b,m,dt){ // F = m g cos(th/2) along track, a = F/m
+ const u=Math.max(0,Math.min(1,1-b.s/(4*R)));const F=m*g*u;const a=F/m;
+ b.v+=a*dt;b.s+=b.v*dt}
+function pos(b){const u=Math.max(-1,Math.min(1,1-b.s/(4*R))),th=Math.min(2*Math.acos(u),Math.PI);return th}
+function d2(){
+ 
+ 
+ const S=setup($("cv2"),2*Math.PI*R+1.3,2.7,18);
+ [[s2.A,MA,0,"--cy","무거운 공 ("+MA+" kg)"],[s2.B,MB,Math.PI*R+0.9,"--ln","가벼운 공 ("+MB+" kg)"]].forEach(([b,m,ox,col,name])=>{OX=ox;const oy=0.45;
+  path(S,cyc(Math.PI),css(col),3,null,oy);
+  const th=pos(b),r=6+Math.cbrt(m)*S.sc*.05;
+  ball(S,cx(th),cy(th),r,css(col),oy);
+  const tp=P(S,1.6,0.35,oy);S.c.font="600 15px -apple-system,'Apple SD Gothic Neo','Noto Sans KR',sans-serif";S.c.fillStyle=css(col);S.c.fillText(name,tp[0],tp[1]);
+  const k=col==="--cy"?"a":"b";
+  
+  $("t"+k).textContent=(b.done!==null?b.done:s2.t).toFixed(3)+" s";
+ });
+ OX=0;if(s2.A.done!==null&&s2.B.done!==null)$("m2").textContent=res(2,truth2())+`무거운 공(${MA}kg)과 가벼운 공(${MB}kg)의 도착 시간 차이는 ${Math.abs(s2.A.done-s2.B.done).toFixed(3)}초 — 같은 시간!`;
+ else $("m2").textContent="";
+}
+function f2(ts){if(!s2.run)return;const dt=Math.min((ts-s2.last)/1000,.05)*SP2;s2.last=ts;
+ const h=0.0005,n=Math.ceil(dt/h);
+ for(let i=0;i<n;i++){s2.t+=dt/n;
+  [[s2.A,MA],[s2.B,MB]].forEach(([b,m])=>{if(b.done===null){step(b,m,dt/n);if(b.s>=4*R-1e-4)b.done=s2.t}})}
+ d2();
+ if(s2.A.done!==null&&s2.B.done!==null){s2.run=false;finish(2,truth2());return}
+ requestAnimationFrame(f2)}
+$("go2").onclick=()=>{if(!tot(2)||s2.run||s2.t>0)return;begin(2);s2.run=true;s2.last=performance.now();requestAnimationFrame(f2)};
+const rs2=()=>{s2={t:0,run:false,last:0,A:mk(),B:mk()};setPick(2,null);lockPick(2,false);d2()};
+$("rs2").onclick=rs2;
+
+/* tabs */
+function tab(n){$("p1").style.display=n==1?"":"none";$("p2").style.display=n==2?"":"none";$("t1").className=n==1?"on":"";$("t2").className=n==2?"on":"";s1.run=s2.run=false;n==1?d1():d2()}
+$("t1").onclick=()=>tab(1);$("t2").onclick=()=>tab(2);
+addEventListener("resize",()=>{$("p1").style.display==""?d1():d2()});
+setPick(1,null);setPick(2,null);[1,2].forEach(n=>document.querySelectorAll("#pk"+n+" .opt").forEach(o=>{o.querySelector(".m").onclick=()=>addPick(n,o.dataset.v,-1);o.querySelector(".p").onclick=()=>addPick(n,o.dataset.v,1)}));showTally(1);showTally(2);
+d1();
+</script>
+</body>
+</html>
